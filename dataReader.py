@@ -7,22 +7,22 @@ from cassandra.cqlengine.models import Model
 from cassandra.cluster import Cluster
 from cassandra.cqlengine.management import sync_table
 
-class Recipe(Model):
-    # partition key
-    id = columns.BigInt(primary_key=True)
-    contributor_id = columns.BigInt(primary_key=True)
-    minutes = columns.Integer(primary_key=True, clustering_order="DESC")
-    mean_rating = columns.Double(primary_key=True, clustering_order="ASC")
-    # data
-    name = columns.Text()
-    submitted = columns.Date()
-    tags = columns.Set(value_type=columns.Text())
-    nutrition = columns.Set(value_type=columns.Double())
-    n_steps = columns.Integer()
-    steps = columns.Set(value_type=columns.Text())
-    description = columns.Text()
-    ingredients = columns.Set(value_type=columns.Text())
-    n_ingredients = columns.Integer()
+def createRecipeTable(session):
+    session.execute("""CREATE TABLE recipe (
+                       id bigint PRIMARY KEY,
+                       contributor_id bigint,
+                       minutes int,
+                       mean_rating double,
+                       name text,
+                       submitted date,
+                       tags set<text>,
+                       nutrition set<double>,
+                       n_steps int,
+                       steps set<text>,
+                       description text,
+                       ingredients set<text>,
+                       n_ingredients int
+                       )""")
 
 # create csv data if it doesnt exist
 if os.path.exists(os.getcwd()+"/processed_recipes.csv"):
@@ -50,7 +50,7 @@ session = cluster.connect()
 session.execute("use recipesharing;")
 ##
 ## Test
-row = session.execute("SELECT release_version FROM system.local").one()
+row = session.execute("SELECT release_version FROM system.local")
 if row:
     print(row[0])
 ##Test
@@ -61,7 +61,7 @@ try :
     if not rows:
         print("Does not exist")
 except:
-    sync_table(Recipe)
+    createRecipeTable(session)
 
 '''
 ingridientMapping = pd.read_pickle("ingr_map.pkl")
