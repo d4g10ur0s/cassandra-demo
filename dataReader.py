@@ -12,6 +12,8 @@ from cassandra.query import BatchStatement, SimpleStatement
 from cassandra import ConsistencyLevel
 
 def createCSV():
+    tags = {}
+
     print("Creating CSV")
     # create difficulty
     # Objective : 3
@@ -40,6 +42,13 @@ def createCSV():
         goGo-=1
         print(str(goGo))
         recipeMeanRating.append(interactionsRaw[interactionsRaw["recipe_id"]==id]["rating"].mean())
+        # get the tags
+        #rTags = recipesRaw[recipesRaw["id"==id]]["tags"].values.tolist()
+        #for t in rTags:
+        #    if t in tags.keys():
+        #        tags[t].append(id)
+        #    else:
+        #        tags[t] = [id,]
     # add mean rating to dataframe
     recipesRaw["mean rating"] = recipeMeanRating
     recipesRaw.to_csv("processed_recipes.csv")
@@ -72,7 +81,9 @@ def query_3(session):
     result = session.execute(statement)
     for res in result:
         print(str(res))
-
+#
+# CREATE TABLES
+#
 def createRecipeTable(session):
     session.execute("""CREATE TABLE IF NOT EXISTS recipe (
                        id bigint ,
@@ -94,8 +105,27 @@ def createRecipeTable(session):
                        id bigint ,
                        tag_name text,
                        PRIMARY KEY((tag_name,id)) );""")
-# select id from recipe_tags where tag_name="auto pu 8eloume" ;
-# select * from recipe where id in [] ;
+#
+# UPLOAD RECIPE TAGS
+#
+def recipeTagsBulkInsert(recipes,session):
+    recipeId = recipes["id"].values.tolist()
+    insertStatement="insert into recipe_tags (id,tag_name) values (? ?);"
+    insertRecipeTags = session.prepare(insertStatement)
+
+    goGo = len(recipeId)
+    for id in recipeId :
+        batch = BatchStatement(consistency_level=ConsistencyLevel.QUORUM)
+        goGo-=1
+        print(str(goGo))
+        # get the tags
+        rTags = recipes[recipes["id"==id]]["tags"].values.tolist()
+        for t in rTags:
+            batch.add(insertRecipeTags, (id,t) )
+        session.execute(batch)
+#
+# UPLOAD RECIPES
+#
 def recipeBulkInsert(recipes,session):
     tableOrder = ["id","contributor_id","minutes","mean rating","name","submitted",
                   "nutrition","n_steps","steps","description","ingredients","n_ingredients","difficulty"]
@@ -142,6 +172,7 @@ session = cluster.connect()
 session.execute("use recipesharing;")# use the correct keyspace
 
 try :# try get table data
+    # for recipes
     rows = session.execute("SELECT * FROM recipe", [])
     if not rows:
         print("Data doesn\'t exist")
@@ -150,6 +181,13 @@ try :# try get table data
         print("Reading CSV")
         editedRecipes = pd.read_csv("processed_recipes.csv")
         recipeBulkInsert(editedRecipes,session)
+    # for recipe tags
+    rows = session.execute("SELECT * FROM recipe_tags", [])
+    if not rows:
+        print("Data doesn\'t exist")
+        print("Inserting data")
+        recipeTagsBulkInsert(editedRecipes,session)
+    # make the queries
     while 1 :
         try :
             choice = int(input("Choose an integer between 1 to 5\n"))
