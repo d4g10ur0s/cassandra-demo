@@ -25,17 +25,20 @@ def createRecipeTable(session):
                        description text,
                        ingredients set<text>,
                        n_ingredients int,
-                       PRIMARY KEY (difficulty) );""")
+                       difficulty text,
+                       PRIMARY KEY ((difficulty) , mean_rating , n_steps) )
+                       WITH CLUSTERING ORDER BY (mean_rating ASC);""")
     session.execute("""CREATE TABLE IF NOT EXISTS recipe_tags (
                        id bigint ,
                        tag_name text,
-                       PRIMARY KEY(tag_name,id) );""")
-
+                       PRIMARY KEY((tag_name,id)) );""")
+# select id from recipe_tags where tag_name="auto pu 8eloume" ;
+# select * from recipe where id in [] ;
 def recipeBulkInsert(recipes,session):
     #recipes.fillna(0,inplace=True)
     tableOrder = ["id","contributor_id","minutes","mean rating","name","submitted",
-                  "nutrition","n_steps","steps","description","ingredients","n_ingredients"]
-    insertStatement = "insert into recipe (id,contributor_id,minutes,mean_rating,name,submitted,"+"nutrition,n_steps,steps,description,ingredients,n_ingredients) VALUES ("+"?,"*11+"?"+")"
+                  "nutrition","n_steps","steps","description","ingredients","n_ingredients","difficulty"]
+    insertStatement = "insert into recipe (id,contributor_id,minutes,mean_rating,name,submitted,"+"nutrition,n_steps,steps,description,ingredients,n_ingredients,difficulty) VALUES ("+"?,"*12+"?"+")"
     insertRecipes = session.prepare(insertStatement)
     batch = BatchStatement(consistency_level=ConsistencyLevel.QUORUM)
     counter = 0
@@ -91,7 +94,10 @@ else:
     recipeId = recipesRaw["id"].values.tolist()
     # get mean rating
     recipeMeanRating = []
+    goGo = len(recipeId)
     for id in recipeId :
+        goGo-=1
+        print(str(goGo))
         recipeMeanRating.append(interactionsRaw[interactionsRaw["recipe_id"]==id]["rating"].mean())
     # add mean rating to dataframe
     recipesRaw["mean rating"] = recipeMeanRating
@@ -111,11 +117,11 @@ try :
     if not rows:
         print("Data doesn\'t exist")
         print("Inserting data")
-        recipeBulkInsert(editedRecipes,session)
 except:
     createRecipeTable(session)
 
-# SELECT * FROM recipe WHERE submitted >= '2012-01-01' AND  submitted <= '2012-05-31' ORDER BY mean_value ASC LIMIT 100 ALLOW FILTERING;
+# SELECT name FROM recipe WHERE difficulty='easy' and submitted >= '2012-01-01' AND  submitted <= '2012-05-31' ORDER BY mean_rating ASC LIMIT 100 ALLOW FILTERING;
+recipeBulkInsert(editedRecipes,session)
 
 rows = session.execute("SELECT * FROM recipe", [])
 if not rows:
