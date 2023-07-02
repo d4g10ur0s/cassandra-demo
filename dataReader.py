@@ -69,7 +69,8 @@ if os.path.exists(os.getcwd()+"/processed_recipes.csv"):
     pass
 else:
     print("Creating CSV")
-    #create difficulty
+    # create difficulty
+    # Objective : 3
     recipesRaw = pd.read_csv("RAW_recipes.csv")
     recipesRaw[["minutes","n_steps"]]=recipesRaw[["minutes","n_steps"]].fillna(0,inplace=False)
     maxDifficulty = recipesRaw["minutes"].max() * recipesRaw["n_steps"].max()
@@ -77,9 +78,14 @@ else:
     dist = recipesRaw["difficulty"].max()-recipesRaw["difficulty"].min()
     diffRange = [i/4 * dist for i in range(1,4) ] + [recipesRaw["difficulty"].max(),]
     zeroSkill = recipesRaw[recipesRaw["difficulty"]<=diffRange[0]]
+    zeroSkill["difficulty"] = "zeroSkill"
     easy = recipesRaw[recipesRaw["difficulty"]<=diffRange[1]]
+    easy["difficulty"] = "easy"
     intermediate = recipesRaw[recipesRaw["difficulty"]<=diffRange[2]]
+    intermediate["difficulty"] = "intermediate"
     professional = recipesRaw[recipesRaw["difficulty"]>diffRange[2]]
+    professional["difficulty"] = "professional"
+    recipesRaw = pd.concat([zeroSkill,easy,intermediate,professional])
     #############################################################################
     interactionsRaw = pd.read_csv("RAW_interactions.csv")
     recipeId = recipesRaw["id"].values.tolist()
