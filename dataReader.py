@@ -62,6 +62,7 @@ def query_1(session):
         print(str(i))
         for res in result:
             print(str(res))
+    return result
 
 def query_2(session):
     statement = "SELECT name,mean_rating FROM recipe WHERE name=\'"+ str(input("Give name of recipe : "))+"\' ALLOW FILTERING;"
@@ -69,6 +70,7 @@ def query_2(session):
     print(str(i))
     for res in result:
         print(str(res))
+    return result
 
 def query_3(session):
     typeOfRecipe=["zeroSkill","easy","intermediate","professional"]
@@ -81,6 +83,29 @@ def query_3(session):
     result = session.execute(statement)
     for res in result:
         print(str(res))
+    return result
+
+def getIdList(session):
+    tagName=input("Type tag name : ")
+    statement = "SELECT id FROM recipe_tags WHERE tag_name=\'"+ str(tagName)+"\' ALLOW FILTERING;"
+    result = session.execute(statement)
+    return [res.id for res in result]
+
+def query_4(session):
+    idList = getIdList(session)
+    statement = "SELECT * FROM recipe WHERE id in "+str(idList)+";"
+    result = session.execute(statement)
+    return result
+
+def query_5(session):
+    typeOfRecipe=["zeroSkill","easy","intermediate","professional"]
+    idList = getIdList(session)
+    result = []
+    for i in typeOfRecipe:
+        statement = "SELECT * FROM recipe WHERE difficulty=\'"+str(i)+"\' and id in "+str(idList)+" ORDER BY mean_rating DESC LIMIT 20 ALLOW FILTERING;"
+        tempResult = session.execute(statement)
+        result+=tempResult
+    return result
 #
 # CREATE TABLES
 #
@@ -110,16 +135,16 @@ def createRecipeTable(session):
 #
 def recipeTagsBulkInsert(recipes,session):
     recipeId = recipes["id"].values.tolist()
-    insertStatement="insert into recipe_tags (id,tag_name) values (? ?);"
+    insertStatement="insert into recipe_tags (id,tag_name) values (? , ?);"
     insertRecipeTags = session.prepare(insertStatement)
-
+    print("komple")
     goGo = len(recipeId)
     for id in recipeId :
         batch = BatchStatement(consistency_level=ConsistencyLevel.QUORUM)
         goGo-=1
         print(str(goGo))
         # get the tags
-        rTags = recipes[recipes["id"==id]]["tags"].values.tolist()
+        rTags = recipes[recipes["id"]==id]["tags"].values.tolist()
         for t in rTags:
             batch.add(insertRecipeTags, (id,t) )
         session.execute(batch)
@@ -171,6 +196,10 @@ cluster = Cluster(['127.0.0.1'])
 session = cluster.connect()
 session.execute("use recipesharing;")# use the correct keyspace
 
+print("Reading CSV")
+editedRecipes = pd.read_csv("processed_recipes.csv")
+recipeTagsBulkInsert(editedRecipes,session)
+
 try :# try get table data
     # for recipes
     rows = session.execute("SELECT * FROM recipe", [])
@@ -186,6 +215,8 @@ try :# try get table data
     if not rows:
         print("Data doesn\'t exist")
         print("Inserting data")
+        print("Reading CSV")
+        editedRecipes = pd.read_csv("processed_recipes.csv")
         recipeTagsBulkInsert(editedRecipes,session)
     # make the queries
     while 1 :
@@ -198,7 +229,7 @@ try :# try get table data
             elif choice==3:
                 recipes = query_3(session)
         except:
-            if (input("Do you want to exit?\n(y\\n)\n")) ==="y":
+            if (input("Do you want to exit?\n(y\\n)\n")) == "y":
                 break
 except:
     createRecipeTable(session)
