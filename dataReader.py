@@ -42,13 +42,6 @@ def createCSV():
         goGo-=1
         print(str(goGo))
         recipeMeanRating.append(interactionsRaw[interactionsRaw["recipe_id"]==id]["rating"].mean())
-        # get the tags
-        #rTags = recipesRaw[recipesRaw["id"==id]]["tags"].values.tolist()
-        #for t in rTags:
-        #    if t in tags.keys():
-        #        tags[t].append(id)
-        #    else:
-        #        tags[t] = [id,]
     # add mean rating to dataframe
     recipesRaw["mean rating"] = recipeMeanRating
     recipesRaw.to_csv("processed_recipes.csv")
@@ -96,13 +89,28 @@ def getIdList(session):
     tagName=input("Type tag name : ")
     statement = "SELECT id FROM recipe_tags WHERE tag_name=\'"+ str(tagName)+"\' ALLOW FILTERING;"
     result = session.execute(statement)
-    return [res.id for res in result]
+    if not result.one()==None:
+        return [res.id for res in result]
+    else:
+        return []
 
 def query_4(session):
-    idList = getIdList(session)
-    statement = "SELECT * FROM recipe WHERE id in "+str(idList)+";"
+    tagName=input("Type tag name : ")
+    statement = "SELECT id FROM recipe_tags WHERE tag_name=\'"+ str(tagName)+"\' ORDER BY submitted DESC ALLOW FILTERING;"
     result = session.execute(statement)
-    return result
+    idList = []
+    if not result.one()==None:
+        idList=[res.id for res in result]
+    else:
+        idList = []
+    # get ids
+    #idList = getIdList(session)
+    if len(idList)>0:
+        statement = "SELECT name,date FROM recipe WHERE id IN "+str(tuple(idList))+"ALLOW FILTERING ;"
+        result = session.execute(statement)
+        return result
+    else:
+        return []
 
 def query_5(session):
     typeOfRecipe=["zeroSkill","easy","intermediate","professional"]
@@ -131,31 +139,32 @@ def createRecipeTable(session):
                        ingredients set<text>,
                        n_ingredients int,
                        difficulty text,
-                       PRIMARY KEY ((difficulty) , mean_rating , n_steps) )
-                       WITH CLUSTERING ORDER BY (mean_rating DESC);""")
+                       PRIMARY KEY ((difficulty) , mean_rating , submitted ,n_steps) )
+                       WITH CLUSTERING ORDER BY (mean_rating DESC, submitted DESC);""")
     session.execute("""CREATE TABLE IF NOT EXISTS recipe_tags (
                        id bigint ,
                        tag_name text,
-                       PRIMARY KEY((tag_name,id)) );""")
+                       submitted date,
+                       PRIMARY KEY((tag_name,id) ,submitted) )
+                       WITH CLUSTERING ORDER BY (submitted DESC);""")
 #
 # UPLOAD RECIPE TAGS
 #
 def recipeTagsBulkInsert(recipes,session):
-    recipeId = recipes["id"].values.tolist()
-    insertStatement="insert into recipe_tags (id,tag_name) values (? , ?);"
+    recipe = recipes[["id","submitted"]].values.tolist()
+    insertStatement="insert into recipe_tags (id,tag_name,submitted) values (? , ?);"
     insertRecipeTags = session.prepare(insertStatement)
-    print("komple")
     goGo = len(recipeId)
-    for id in recipeId :
+    for r in recipe :
         batch = BatchStatement(consistency_level=ConsistencyLevel.QUORUM)
         goGo-=1
         print(str(goGo))
         # get the tags
-        rTags = recipes[recipes["id"]==id]["tags"].values.tolist()
+        rTags = recipes[recipes["id"]==r[0]]["tags"].values.tolist()
         rTags=ast.literal_eval(rTags[0])
         for t in rTags:
             if len(t)>0:
-                batch.add(insertRecipeTags, (id,t) )
+                batch.add(insertRecipeTags, (r[0],t,r[1]) )
         session.execute(batch)
 #
 # UPLOAD RECIPES
@@ -221,7 +230,6 @@ try :# try get table data
         recipeBulkInsert(editedRecipes,session)
     # for recipe tags
     rows = session.execute("SELECT * FROM recipe_tags limit 10", [])
-    print(str(rows))
     if not rows:
         print("Data doesn\'t exist")
         print("Inserting data")
