@@ -60,9 +60,23 @@ def query_1(session):
         statement = "SELECT name,mean_rating FROM recipe WHERE difficulty=\'"+ str(i)+"\' and submitted >= '2012-01-01' AND  submitted <= '2012-05-31' ORDER BY mean_rating DESC LIMIT 30 ALLOW FILTERING;"
         result = session.execute(statement)
         print(str(i))
+        lastIndex = 0
         for res in result:
-            print(str(res))
-    return result
+            # sort results
+            if len(chosen)<30:
+                chosen.append( (res[0], res[1]) )
+                break
+            else:
+                for indx in range(lastIndex,30):
+                    if chosen[indx][1] < res[1]:
+                        chosen[indx] = (res[0], res[1])
+                        lastIndex+=1
+                if lastIndex==29:
+                    lastIndex=0
+                    break
+        print(str(chosen))
+
+    return chosen
 
 def query_2(session):
     statement = "SELECT name,mean_rating FROM recipe WHERE name=\'"+ str(input("Give name of recipe : "))+"\' ALLOW FILTERING;"
@@ -145,8 +159,10 @@ def recipeTagsBulkInsert(recipes,session):
         print(str(goGo))
         # get the tags
         rTags = recipes[recipes["id"]==id]["tags"].values.tolist()
+        rTags=ast.literal_eval(rTags[0])
         for t in rTags:
-            batch.add(insertRecipeTags, (id,t) )
+            if len(t)>0:
+                batch.add(insertRecipeTags, (id,t) )
         session.execute(batch)
 #
 # UPLOAD RECIPES
@@ -196,13 +212,13 @@ cluster = Cluster(['127.0.0.1'])
 session = cluster.connect()
 session.execute("use recipesharing;")# use the correct keyspace
 
-print("Reading CSV")
-editedRecipes = pd.read_csv("processed_recipes.csv")
-recipeTagsBulkInsert(editedRecipes,session)
+#print("Reading CSV")
+#editedRecipes = pd.read_csv("processed_recipes.csv")
+#recipeTagsBulkInsert(editedRecipes,session)
 
 try :# try get table data
     # for recipes
-    rows = session.execute("SELECT * FROM recipe", [])
+    rows = session.execute("SELECT * FROM recipe limit 10", [])
     if not rows:
         print("Data doesn\'t exist")
         print("Inserting data")
@@ -211,7 +227,8 @@ try :# try get table data
         editedRecipes = pd.read_csv("processed_recipes.csv")
         recipeBulkInsert(editedRecipes,session)
     # for recipe tags
-    rows = session.execute("SELECT * FROM recipe_tags", [])
+    rows = session.execute("SELECT * FROM recipe_tags limit 10", [])
+    print(str(rows))
     if not rows:
         print("Data doesn\'t exist")
         print("Inserting data")
