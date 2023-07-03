@@ -151,21 +151,22 @@ def createRecipeTable(session):
 # UPLOAD RECIPE TAGS
 #
 def recipeTagsBulkInsert(recipes,session):
-    recipe = recipes[["id","submitted"]].values.tolist()
-    insertStatement="insert into recipe_tags (id,tag_name,submitted) values (? , ?);"
+    recipeId = recipes["id"].values.tolist()
+    recipeDate = recipes["submitted"].values.tolist()
+    insertStatement="insert into recipe_tags (id,tag_name,submitted) values (? , ?, ?);"
     insertRecipeTags = session.prepare(insertStatement)
-    goGo = len(recipeId)
-    for r in recipe :
-        batch = BatchStatement(consistency_level=ConsistencyLevel.QUORUM)
-        goGo-=1
+    goGo = 0
+    for id in recipeId :
         print(str(goGo))
+        batch = BatchStatement(consistency_level=ConsistencyLevel.QUORUM)
         # get the tags
-        rTags = recipes[recipes["id"]==r[0]]["tags"].values.tolist()
+        rTags = recipes[recipes["id"]==id]["tags"].values.tolist()
         rTags=ast.literal_eval(rTags[0])
         for t in rTags:
             if len(t)>0:
-                batch.add(insertRecipeTags, (r[0],t,r[1]) )
+                batch.add(insertRecipeTags, (id,t,recipeDate[goGo]) )
         session.execute(batch)
+        goGo+=1
 #
 # UPLOAD RECIPES
 #
