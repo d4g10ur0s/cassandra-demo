@@ -79,22 +79,17 @@ def query_1(session):
 def query_2(session):
     statement = "SELECT name,mean_rating FROM recipe WHERE name=\'"+ str(input("Give name of recipe : "))+"\' ALLOW FILTERING;"
     result = session.execute(statement)
-    print(str(i))
-    for res in result:
-        print(str(res))
     return result
 
 def query_3(session):
     typeOfRecipe=["zeroSkill","easy","intermediate","professional"]
-    print("Choose number of difficulty : \n Select between 1 to 4")
-    for i in typeOfRecipe:
-        print(str(i))
-    choice = int(input())
+    print("Choose number of difficulty : \nSelect between 1 to 4\n")
+    for i in range(len(typeOfRecipe)):
+        print(str(i+1)+") "+str(typeOfRecipe[i]))
+    choice = int(input())-1
     print("Selected : " + str(typeOfRecipe[choice]))
     statement = "SELECT name,mean_rating FROM recipe WHERE difficulty=\'"+ str(typeOfRecipe[choice])+"\' ORDER BY mean_rating DESC LIMIT 100 ALLOW FILTERING;"
     result = session.execute(statement)
-    for res in result:
-        print(str(res))
     return result
 
 def getIdList(session):
@@ -243,8 +238,12 @@ try :# try get table data
                     print(str("*"*10+"\n"+"Name : " + r[0] + "\nMean Rating : " + str(r[1]) +"\n"+"*"*10+"\n"))
             elif choice==2:
                 recipes = query_2(session)
+                for r in recipes :
+                    print(str("*"*10+"\n"+"Name : " + r[0] + "\nMean Rating : " + str(r[1]) +"\n"+"*"*10+"\n"))
             elif choice==3:
                 recipes = query_3(session)
+                for r in recipes :
+                    print(str("*"*10+"\n"+"Name : " + r[0] + "\nMean Rating : " + str(r[1]) +"\n"+"*"*10+"\n"))
             elif choice==4:
                 recipes = query_4(session)
             elif choice==5:
