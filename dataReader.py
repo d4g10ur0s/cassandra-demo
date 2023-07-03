@@ -65,17 +65,15 @@ def query_1(session):
             # sort results
             if len(chosen)<30:
                 chosen.append( (res[0], res[1]) )
-                break
             else:
                 for indx in range(lastIndex,30):
                     if chosen[indx][1] < res[1]:
                         chosen[indx] = (res[0], res[1])
                         lastIndex+=1
+                        break
                 if lastIndex==29:
                     lastIndex=0
                     break
-        print(str(chosen))
-
     return chosen
 
 def query_2(session):
@@ -241,6 +239,8 @@ try :# try get table data
             choice = int(input("Choose an integer between 1 to 5\n"))
             if choice==1:
                 recipes = query_1(session)
+                for r in recipes :
+                    print(str("*"*10+"\n"+"Name : " + r[0] + "\nMean Rating : " + str(r[1]) +"\n"+"*"*10+"\n"))
             elif choice==2:
                 recipes = query_2(session)
             elif choice==3:
