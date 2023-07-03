@@ -228,6 +228,10 @@ try :# try get table data
                 recipes = query_2(session)
             elif choice==3:
                 recipes = query_3(session)
+            elif choice==4:
+                recipes = query_4(session)
+            elif choice==5:
+                recipes = query_5(session)
         except:
             if (input("Do you want to exit?\n(y\\n)\n")) == "y":
                 break
