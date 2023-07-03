@@ -1,4 +1,5 @@
 import os
+import datetime as dt
 
 import pandas as pd
 import numpy as np
@@ -13,7 +14,6 @@ from cassandra import ConsistencyLevel
 
 def createCSV():
     tags = {}
-
     print("Creating CSV")
     # create difficulty
     # Objective : 3
@@ -23,13 +23,13 @@ def createCSV():
     recipesRaw["difficulty"] = recipesRaw["minutes"]*recipesRaw["n_steps"]/maxDifficulty
     dist = recipesRaw["difficulty"].max()-recipesRaw["difficulty"].min()
     diffRange = [i/4 * dist for i in range(1,4) ] + [recipesRaw["difficulty"].max(),]
-    zeroSkill = recipesRaw[recipesRaw["difficulty"]<=diffRange[0]]
+    zeroSkill = recipesRaw.loc[recipesRaw["difficulty"]<=diffRange[0]]
     zeroSkill["difficulty"] = "zeroSkill"
-    easy = recipesRaw[recipesRaw["difficulty"]<=diffRange[1]]
+    easy = recipesRaw.loc[recipesRaw["difficulty"]<=diffRange[1]]
     easy["difficulty"] = "easy"
-    intermediate = recipesRaw[recipesRaw["difficulty"]<=diffRange[2]]
+    intermediate = recipesRaw.loc[recipesRaw["difficulty"]<=diffRange[2]]
     intermediate["difficulty"] = "intermediate"
-    professional = recipesRaw[recipesRaw["difficulty"]>diffRange[2]]
+    professional = recipesRaw.loc[recipesRaw["difficulty"]>diffRange[2]]
     professional["difficulty"] = "professional"
     recipesRaw = pd.concat([zeroSkill,easy,intermediate,professional])
     #############################################################################
@@ -50,18 +50,18 @@ def query_1(session):
     typeOfRecipe=["zeroSkill","easy","intermediate","professional"]
     chosen = []
     for i in typeOfRecipe:
-        statement = "SELECT name,mean_rating FROM recipe WHERE difficulty=\'"+ str(i)+"\' and submitted >= '2012-01-01' AND  submitted <= '2012-05-31' ORDER BY mean_rating DESC LIMIT 30 ALLOW FILTERING;"
+        statement = "SELECT name,mean_rating,submitted,difficulty FROM recipe WHERE difficulty=\'"+ str(i)+"\' and submitted >= '2012-01-01' AND  submitted <= '2012-05-31' ORDER BY mean_rating DESC LIMIT 30 ALLOW FILTERING;"
         result = session.execute(statement)
         print(str(i))
         lastIndex = 0
         for res in result:
             # sort results
             if len(chosen)<30:
-                chosen.append( (res[0], res[1]) )
+                chosen.append( tuple(res) )
             else:
                 for indx in range(lastIndex,30):
                     if chosen[indx][1] < res[1]:
-                        chosen[indx] = (res[0], res[1])
+                        chosen[indx] = tuple(res)
                         lastIndex+=1
                         break
                 if lastIndex==29:
@@ -70,9 +70,15 @@ def query_1(session):
     return chosen
 
 def query_2(session):
-    statement = "SELECT name,mean_rating FROM recipe WHERE name=\'"+ str(input("Give name of recipe : "))+"\' ALLOW FILTERING;"
-    result = session.execute(statement)
-    return result
+    recipeInput=str(input("Give name of recipe : "))
+    typeOfRecipe=["zeroSkill","easy","intermediate","professional"]
+    chosen = []
+    for i in typeOfRecipe:
+        statement = "SELECT * FROM recipe WHERE difficulty=\'"+ str(i) +"\' and name=\'"+ recipeInput +"\' ALLOW FILTERING;"
+        result = session.execute(statement)
+        for res in result :
+            chosen.append(tuple(res))
+    return chosen
 
 def query_3(session):
     typeOfRecipe=["zeroSkill","easy","intermediate","professional"]
@@ -81,9 +87,12 @@ def query_3(session):
         print(str(i+1)+") "+str(typeOfRecipe[i]))
     choice = int(input())-1
     print("Selected : " + str(typeOfRecipe[choice]))
-    statement = "SELECT name,mean_rating FROM recipe WHERE difficulty=\'"+ str(typeOfRecipe[choice])+"\' ORDER BY mean_rating DESC LIMIT 100 ALLOW FILTERING;"
+    statement = "SELECT name,mean_rating,difficulty FROM recipe WHERE difficulty=\'"+ str(typeOfRecipe[choice])+"\' ORDER BY mean_rating DESC LIMIT 100 ALLOW FILTERING;"
     result = session.execute(statement)
-    return result
+    chosen = []
+    for res in result :
+        chosen.append(tuple(res))
+    return chosen
 
 def getIdList(session):
     tagName=input("Type tag name : ")
@@ -95,8 +104,9 @@ def getIdList(session):
         return []
 
 def query_4(session):
+    typeOfRecipe=["zeroSkill","easy","intermediate","professional"]
     tagName=input("Type tag name : ")
-    statement = "SELECT id FROM recipe_tags WHERE tag_name=\'"+ str(tagName)+"\' ORDER BY submitted DESC ALLOW FILTERING;"
+    statement = "SELECT id FROM recipe_tags WHERE tag_name=\'"+ str(tagName)+"\' ALLOW FILTERING;"
     result = session.execute(statement)
     idList = []
     if not result.one()==None:
@@ -104,23 +114,51 @@ def query_4(session):
     else:
         idList = []
     # get ids
-    #idList = getIdList(session)
     if len(idList)>0:
-        statement = "SELECT name,date FROM recipe WHERE id IN "+str(tuple(idList))+"ALLOW FILTERING ;"
-        result = session.execute(statement)
-        return result
+        chosen = []
+        for t in typeOfRecipe:
+            statement = "SELECT name,submitted FROM recipe WHERE difficulty = \'"+str(t)+"\'and id IN "+str(tuple(idList))+" LIMIT 20 ALLOW FILTERING ;"
+            result = session.execute(statement)
+            for res in result:
+                if len(chosen)==0:
+                    chosen.append(tuple(res))
+                else:
+                    indx = 0
+                    for e in chosen :
+                        if e[1] >= res[1]:
+                            indx+=1
+                        else:
+                            chosen.insert(indx,tuple(res))
+                            indx = 0
+                            break
+                    if not(indx < len(chosen)):
+                        chosen.append(tuple(res))
+        return chosen
     else:
         return []
 
 def query_5(session):
+    chosen = []
     typeOfRecipe=["zeroSkill","easy","intermediate","professional"]
     idList = getIdList(session)
-    result = []
     for i in typeOfRecipe:
-        statement = "SELECT * FROM recipe WHERE difficulty=\'"+str(i)+"\' and id in "+str(idList)+" ORDER BY mean_rating DESC LIMIT 20 ALLOW FILTERING;"
-        tempResult = session.execute(statement)
-        result+=tempResult
-    return result
+        statement = "SELECT * FROM recipe WHERE difficulty=\'"+str(i)+"\' and id in "+str(tuple(idList))+" ORDER BY mean_rating DESC LIMIT 20 ALLOW FILTERING;"
+        result = session.execute(statement)
+        lastIndex = 0
+        for res in result:
+            # sort results
+            if len(chosen)<20:
+                chosen.append( tuple(res) )
+            else:
+                for indx in range(lastIndex,20):
+                    if chosen[indx][2] < res[2]:
+                        chosen[indx] = tuple(res)
+                        lastIndex+=1
+                        break
+                if lastIndex==19:
+                    lastIndex=0
+                    break
+    return chosen
 #
 # CREATE TABLES
 #
@@ -145,7 +183,7 @@ def createRecipeTable(session):
                        id bigint ,
                        tag_name text,
                        submitted date,
-                       PRIMARY KEY((tag_name,id) ,submitted) )
+                       PRIMARY KEY((tag_name),submitted,id ) )
                        WITH CLUSTERING ORDER BY (submitted DESC);""")
 #
 # UPLOAD RECIPE TAGS
@@ -214,7 +252,7 @@ print("Connecting to database")
 cluster = Cluster(['127.0.0.1'])
 session = cluster.connect()
 session.execute("use recipesharing;")# use the correct keyspace
-
+#query_5(session)
 #print("Reading CSV")
 #editedRecipes = pd.read_csv("processed_recipes.csv")
 #recipeTagsBulkInsert(editedRecipes,session)
@@ -244,19 +282,39 @@ try :# try get table data
             if choice==1:
                 recipes = query_1(session)
                 for r in recipes :
-                    print(str("*"*10+"\n"+"Name : " + r[0] + "\nMean Rating : " + str(r[1]) +"\n"+"*"*10+"\n"))
+                    print(str("*"*10+"\n"+"Name : " + r[0] + "\nMean Rating : " + str(r[1])))
+                    print(str("Submitted : " + str(r[2]) + "\nDifficulty : " + str(r[3]) +"\n"+"*"*10))
             elif choice==2:
                 recipes = query_2(session)
-                for r in recipes :
-                    print(str("*"*10+"\n"+"Name : " + r[0] + "\nMean Rating : " + str(r[1]) +"\n"+"*"*10+"\n"))
+                if len(recipes)>0:
+                    for r in recipes :
+                        print(str("*"*10+"\n"+"Difficulty : " + r[0] + "\nMean Rating : " + str(r[1])))
+                        print(str("*"*10+"\n"+"Name : " + r[10] + "\nMinutes : " + str(r[9])))
+                        print("Steps")
+                        for i in range(len(r[12])):
+                            print(str(i+1) + ") " + str(r[12][i]))
+                else:
+                    print("There is no recipe with this name.")
             elif choice==3:
                 recipes = query_3(session)
                 for r in recipes :
-                    print(str("*"*10+"\n"+"Name : " + r[0] + "\nMean Rating : " + str(r[1]) +"\n"+"*"*10+"\n"))
+                    print(str("*"*10+"\n"+"Name : " + r[0] + "\nMean Rating : " + str(r[1])))
+                    print(str("Difficulty : " + str(r[2]) +"\n"+"*"*10))
             elif choice==4:
                 recipes = query_4(session)
+                for r in recipes :
+                    print(str("*"*10+"\n"+"Name : " + r[0] + "\nMean Rating : " + str(r[1])+"\n"+"*"*10))
             elif choice==5:
                 recipes = query_5(session)
+                if len(recipes)>0:
+                    for r in recipes :
+                        print(str("*"*10+"\n"+"Difficulty : " + r[0] + "\nMean Rating : " + str(r[1])))
+                        print(str("*"*10+"\n"+"Name : " + r[10] + "\nMinutes : " + str(r[9])))
+                        print("Steps")
+                        for i in range(len(r[12])):
+                            print(str(i+1) + ") " + str(r[12][i]))
+                else:
+                    print("There is no recipe with this name.")
         except:
             if (input("Do you want to exit?\n(y\\n)\n")) == "y":
                 break
