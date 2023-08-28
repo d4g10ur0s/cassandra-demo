@@ -15,12 +15,15 @@ from cassandra import ConsistencyLevel
 from tableCreation import createRecipeTable
 from insertData import recipeTagsBulkInsert,recipeBulkInsert
 
+p = "F:\\5oEtos\\EarinoEksamhno\\BigData"
+
 def createCSV():
+    global p
     tags = {}
     print("Creating CSV")
     # create difficulty
     # Objective : 3
-    recipesRaw = pd.read_csv("RAW_recipes.csv")
+    recipesRaw = pd.read_csv(p+"\\RAW_recipes.csv")
     recipesRaw[["minutes","n_steps"]]=recipesRaw[["minutes","n_steps"]].fillna(0,inplace=False)
     maxDifficulty = recipesRaw["minutes"].max() * recipesRaw["n_steps"].max()
     recipesRaw["difficulty"] = recipesRaw["minutes"]*recipesRaw["n_steps"]/maxDifficulty
@@ -36,7 +39,7 @@ def createCSV():
     professional["difficulty"] = "professional"
     recipesRaw = pd.concat([zeroSkill,easy,intermediate,professional])
     #############################################################################
-    interactionsRaw = pd.read_csv("RAW_interactions.csv")
+    interactionsRaw = pd.read_csv(p+"\\RAW_interactions.csv")
     recipeId = recipesRaw["id"].values.tolist()
     # get mean rating
     recipeMeanRating = []
@@ -49,125 +52,13 @@ def createCSV():
     recipesRaw["mean rating"] = recipeMeanRating
     recipesRaw.to_csv("processed_recipes.csv")
 
-def query_1(session):
-    typeOfRecipe=["zeroSkill","easy","intermediate","professional"]
-    chosen = []
-    for i in typeOfRecipe:
-        statement = "SELECT name,mean_rating,submitted,difficulty FROM recipe WHERE difficulty=\'"+ str(i)+"\' and submitted >= '2012-01-01' AND  submitted <= '2012-05-31' ORDER BY mean_rating DESC LIMIT 30 ALLOW FILTERING;"
-        result = session.execute(statement)
-        print(str(i))
-        lastIndex = 0
-        for res in result:
-            # sort results
-            if len(chosen)<30:
-                chosen.append( tuple(res) )
-            else:
-                for indx in range(lastIndex,30):
-                    if chosen[indx][1] < res[1]:
-                        chosen[indx] = tuple(res)
-                        lastIndex+=1
-                        break
-                if lastIndex==29:
-                    lastIndex=0
-                    break
-    return chosen
-
-def query_2(session):
-    recipeInput=str(input("Give name of recipe : "))
-    typeOfRecipe=["zeroSkill","easy","intermediate","professional"]
-    chosen = []
-    for i in typeOfRecipe:
-        statement = "SELECT * FROM recipe WHERE difficulty=\'"+ str(i) +"\' and name=\'"+ recipeInput +"\' ALLOW FILTERING;"
-        result = session.execute(statement)
-        for res in result :
-            chosen.append(tuple(res))
-    return chosen
-
-def query_3(session):
-    typeOfRecipe=["zeroSkill","easy","intermediate","professional"]
-    print("Choose number of difficulty : \nSelect between 1 to 4\n")
-    for i in range(len(typeOfRecipe)):
-        print(str(i+1)+") "+str(typeOfRecipe[i]))
-    choice = int(input())-1
-    print("Selected : " + str(typeOfRecipe[choice]))
-    statement = "SELECT name,mean_rating,difficulty FROM recipe WHERE difficulty=\'"+ str(typeOfRecipe[choice])+"\' ORDER BY mean_rating DESC LIMIT 100 ALLOW FILTERING;"
-    result = session.execute(statement)
-    chosen = []
-    for res in result :
-        chosen.append(tuple(res))
-    return chosen
-
-def getIdList(session):
-    tagName=input("Type tag name : ")
-    statement = "SELECT id FROM recipe_tags WHERE tag_name=\'"+ str(tagName)+"\' ALLOW FILTERING;"
-    result = session.execute(statement)
-    if not result.one()==None:
-        return [res.id for res in result]
-    else:
-        return []
-
-def query_4(session):
-    typeOfRecipe=["zeroSkill","easy","intermediate","professional"]
-    tagName=input("Type tag name : ")
-    statement = "SELECT id FROM recipe_tags WHERE tag_name=\'"+ str(tagName)+"\' ALLOW FILTERING;"
-    result = session.execute(statement)
-    idList = []
-    if not result.one()==None:
-        idList=[res.id for res in result]
-    else:
-        idList = []
-    # get ids
-    if len(idList)>0:
-        chosen = []
-        for t in typeOfRecipe:
-            statement = "SELECT name,submitted FROM recipe WHERE difficulty = \'"+str(t)+"\'and id IN "+str(tuple(idList))+" LIMIT 20 ALLOW FILTERING ;"
-            result = session.execute(statement)
-            for res in result:
-                if len(chosen)==0:
-                    chosen.append(tuple(res))
-                else:
-                    indx = 0
-                    for e in chosen :
-                        if e[1] >= res[1]:
-                            indx+=1
-                        else:
-                            chosen.insert(indx,tuple(res))
-                            indx = 0
-                            break
-                    if not(indx < len(chosen)):
-                        chosen.append(tuple(res))
-        return chosen
-    else:
-        return []
-
-def query_5(session):
-    chosen = []
-    typeOfRecipe=["zeroSkill","easy","intermediate","professional"]
-    idList = getIdList(session)
-    for i in typeOfRecipe:
-        statement = "SELECT * FROM recipe WHERE difficulty=\'"+str(i)+"\' and id in "+str(tuple(idList))+" ORDER BY mean_rating DESC LIMIT 20 ALLOW FILTERING;"
-        result = session.execute(statement)
-        lastIndex = 0
-        for res in result:
-            # sort results
-            if len(chosen)<20:
-                chosen.append( tuple(res) )
-            else:
-                for indx in range(lastIndex,20):
-                    if chosen[indx][2] < res[2]:
-                        chosen[indx] = tuple(res)
-                        lastIndex+=1
-                        break
-                if lastIndex==19:
-                    lastIndex=0
-                    break
-    return chosen
 # create csv data if it doesnt exist
-if os.path.exists(os.getcwd()+"/processed_recipes.csv"):
+if os.path.exists(p+"\\processed_recipes.csv"):
     pass
 else:
     createCSV()
 # connect to cassandra
+# '127.0.0.1:9042
 print("Connecting to database")
 cluster = Cluster(['127.0.0.1'])
 session = cluster.connect()
@@ -178,12 +69,11 @@ replication_options = {
     'replication_factor': 1  # Adjust replication factor as needed
 }
 create_keyspace_query = f"CREATE KEYSPACE IF NOT EXISTS {keyspace_name} WITH replication = {str(replication_options)}"
-
 session.execute(create_keyspace_query)
-
-session.execute("use recipesharing;")# use the correct keyspace
-
-try :# try get table data
+# use the correct keyspace
+session.execute("use recipesharing;")
+# try get table data
+try :
     # for recipes
     rows = session.execute("SELECT * FROM recipe limit 10", [])
     if not rows:
@@ -191,7 +81,7 @@ try :# try get table data
         print("Inserting data")
         # read csv data
         print("Reading CSV")
-        editedRecipes = pd.read_csv("processed_recipes.csv")
+        editedRecipes = pd.read_csv(p+"\\processed_recipes.csv")
         recipeBulkInsert(editedRecipes,session)
     # for recipe tags
     rows = session.execute("SELECT * FROM recipe_tags limit 10", [])
@@ -199,7 +89,7 @@ try :# try get table data
         print("Data doesn\'t exist")
         print("Inserting data")
         print("Reading CSV")
-        editedRecipes = pd.read_csv("processed_recipes.csv")
+        editedRecipes = pd.read_csv(p+"\\processed_recipes.csv")
         recipeTagsBulkInsert(editedRecipes,session)
     # make the queries
     while 1 :
@@ -245,28 +135,10 @@ try :# try get table data
             if (input("Do you want to exit?\n(y\\n)\n")) == "y":
                 break
 except:
+    # create tables
     createRecipeTable(session)
-
-rows = session.execute("SELECT * FROM recipe", [])
-if not rows:
-    print("Does not exist")
-
-'''
-ingridientMapping = pd.read_pickle("ingr_map.pkl")
-print(str(ingridientMapping.keys()))
-
-ppUsers = pd.read_csv("PP_users.csv")
-print(str(ppUsers.keys()))
-
-ppRecipes = pd.read_csv("PP_recipes.csv")
-print(str(ppRecipes.keys()))
-
-interactionsValidation = pd.read_csv("interactions_validation.csv")
-print(str(interactionsValidation.keys()))
-
-interactionsTrain = pd.read_csv("interactions_train.csv")
-print(str(interactionsTrain.keys()))
-
-interactionsTest = pd.read_csv("interactions_test.csv")
-print(str(interactionsTest.keys()))
-'''
+finally :
+    # it's just a select all statement , commonly used to validate data insertion
+    rows = session.execute("SELECT * FROM recipe", [])
+    if not rows:
+        print("Does not exist")
