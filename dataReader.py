@@ -4,13 +4,16 @@ import datetime as dt
 import pandas as pd
 import numpy as np
 import ast
-
+# cassandra imports
 from cassandra.cqlengine import columns
 from cassandra.cqlengine.models import Model
 from cassandra.cluster import Cluster
 from cassandra.cqlengine.management import sync_table
 from cassandra.query import BatchStatement, SimpleStatement
 from cassandra import ConsistencyLevel
+# custom imports
+from tableCreation import createRecipeTable
+from insertData import recipeTagsBulkInsert,recipeBulkInsert
 
 def createCSV():
     tags = {}
@@ -159,89 +162,6 @@ def query_5(session):
                     lastIndex=0
                     break
     return chosen
-#
-# CREATE TABLES
-#
-def createRecipeTable(session):
-    session.execute("""CREATE TABLE IF NOT EXISTS recipe (
-                       id bigint ,
-                       contributor_id bigint,
-                       minutes float,
-                       mean_rating double,
-                       name text,
-                       submitted date,
-                       nutrition set<double>,
-                       n_steps int,
-                       steps set<text>,
-                       description text,
-                       ingredients set<text>,
-                       n_ingredients int,
-                       difficulty text,
-                       PRIMARY KEY ((difficulty) , mean_rating , submitted ,n_steps) )
-                       WITH CLUSTERING ORDER BY (mean_rating DESC, submitted DESC);""")
-    session.execute("""CREATE TABLE IF NOT EXISTS recipe_tags (
-                       id bigint ,
-                       tag_name text,
-                       submitted date,
-                       PRIMARY KEY((tag_name),submitted,id ) )
-                       WITH CLUSTERING ORDER BY (submitted DESC);""")
-#
-# UPLOAD RECIPE TAGS
-#
-def recipeTagsBulkInsert(recipes,session):
-    recipeId = recipes["id"].values.tolist()
-    recipeDate = recipes["submitted"].values.tolist()
-    insertStatement="insert into recipe_tags (id,tag_name,submitted) values (? , ?, ?);"
-    insertRecipeTags = session.prepare(insertStatement)
-    goGo = 0
-    for id in recipeId :
-        print(str(goGo))
-        batch = BatchStatement(consistency_level=ConsistencyLevel.QUORUM)
-        # get the tags
-        rTags = recipes[recipes["id"]==id]["tags"].values.tolist()
-        rTags=ast.literal_eval(rTags[0])
-        for t in rTags:
-            if len(t)>0:
-                batch.add(insertRecipeTags, (id,t,recipeDate[goGo]) )
-        session.execute(batch)
-        goGo+=1
-#
-# UPLOAD RECIPES
-#
-def recipeBulkInsert(recipes,session):
-    tableOrder = ["id","contributor_id","minutes","mean rating","name","submitted",
-                  "nutrition","n_steps","steps","description","ingredients","n_ingredients","difficulty"]
-    insertStatement = "insert into recipe (id,contributor_id,minutes,mean_rating,name,submitted,"+"nutrition,n_steps,steps,description,ingredients,n_ingredients,difficulty) VALUES ("+"?,"*12+"?"+")"
-    insertRecipes = session.prepare(insertStatement)
-    batch = BatchStatement(consistency_level=ConsistencyLevel.QUORUM)
-    counter = 0
-    acounter = 0
-    for recipe in recipes[tableOrder].values.tolist():
-        counter+=1
-        acounter+=1
-        print(str(acounter))
-        try :
-            if np.isnan(recipe[4]):
-                recipe[4]="noName"
-        except:
-            pass
-        recipe[6] = ast.literal_eval(recipe[6])
-        #recipe[7] = ast.literal_eval(recipe[7])
-        recipe[8] = ast.literal_eval(recipe[8])
-        try :
-            if np.isnan(recipe[9]):
-                recipe[9]=""
-        except:
-            pass
-        recipe[10] = ast.literal_eval(recipe[10])
-        batch.add(insertRecipes, tuple(recipe))
-        if counter > 10:
-            session.execute(batch)
-            counter = 0
-            batch = BatchStatement(consistency_level=ConsistencyLevel.QUORUM)
-        else:
-            pass
-    session.execute(batch)
 # create csv data if it doesnt exist
 if os.path.exists(os.getcwd()+"/processed_recipes.csv"):
     pass
@@ -251,11 +171,17 @@ else:
 print("Connecting to database")
 cluster = Cluster(['127.0.0.1'])
 session = cluster.connect()
+# create keyspace if not exist
+keyspace_name = 'recipesharing'
+replication_options = {
+    'class': 'SimpleStrategy',
+    'replication_factor': 1  # Adjust replication factor as needed
+}
+create_keyspace_query = f"CREATE KEYSPACE IF NOT EXISTS {keyspace_name} WITH replication = {str(replication_options)}"
+
+session.execute(create_keyspace_query)
+
 session.execute("use recipesharing;")# use the correct keyspace
-#query_5(session)
-#print("Reading CSV")
-#editedRecipes = pd.read_csv("processed_recipes.csv")
-#recipeTagsBulkInsert(editedRecipes,session)
 
 try :# try get table data
     # for recipes
