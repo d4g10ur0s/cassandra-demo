@@ -56,14 +56,14 @@ def recipeBulkInsert(recipes,session):
         recipeTagsBulkInsert(recipe[0],recipe[12],session)
         try :
             if np.isnan(recipe[4]):
-                input(str(recipe))
+                #input(str(recipe))
                 recipe[4]=""
         except:
             pass
         batch.add(insertRecipes, tuple(recipe))
-        batch_1.add(insertRecipes, (recipe[2],recipe[0]))
-        batch_2.add(insertRecipes, (recipe[1],recipe[0]))
-        batch_3.add(insertRecipes, (recipe[5],recipe[0]))
+        batch_1.add(insertRecipes_1, (recipe[2],recipe[0]))
+        batch_2.add(insertRecipes_2, (recipe[1],recipe[0]))
+        batch_3.add(insertRecipes_3, (recipe[5],recipe[0]))
         if counter > 10:
             session.execute(batch)
             session.execute(batch_1)
