@@ -10,7 +10,7 @@ from cassandra.cqlengine.models import Model
 from cassandra.cluster import Cluster
 from cassandra.cqlengine.management import sync_table
 from cassandra.query import BatchStatement, SimpleStatement
-from cassandra import ConsistencyLevel
+from cassandra import ConsistencyLevel,InvalidRequest
 # custom imports
 from tableCreation import createRecipeTable
 from insertData import recipeTagsBulkInsert,recipeBulkInsert
@@ -74,7 +74,7 @@ session.execute(create_keyspace_query)
 session.execute("use recipesharing;")
 # try get table data
 try :
-    # for recipes
+    # for recipes cassandra.InvalidRequest
     rows = session.execute("SELECT * FROM recipe limit 10", [])
     if not rows:
         print("Data doesn\'t exist")
@@ -134,7 +134,7 @@ try :
         except:
             if (input("Do you want to exit?\n(y\\n)\n")) == "y":
                 break
-except:
+except InvalidRequest :
     # create tables
     createRecipeTable(session)
 finally :

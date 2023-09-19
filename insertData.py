@@ -1,3 +1,8 @@
+from cassandra.query import BatchStatement
+from cassandra import ConsistencyLevel
+import uuid
+
+import ast
 #
 # UPLOAD RECIPE TAGS
 #
@@ -22,31 +27,26 @@ def recipeTagsBulkInsert(recipes,session):
 # UPLOAD RECIPES
 #
 def recipeBulkInsert(recipes,session):
-    tableOrder = ["id","contributor_id","minutes","mean rating","name","submitted",
-                  "nutrition","n_steps","steps","description","ingredients","n_ingredients","difficulty"]
-    insertStatement = "insert into recipe (id,contributor_id,minutes,mean_rating,name,submitted,"+"nutrition,n_steps,steps,description,ingredients,n_ingredients,difficulty) VALUES ("+"?,"*12+"?"+")"
+    tableOrder = ["id","name","submitted","mean rating","description","difficulty","ingredients","minutes",
+                 "n_ingredients","n_steps","nutrition","steps","tags"]
+    insertStatement = "insert into recipe (id,name,submitted,mean_rating,description,difficulty,ingredients,minutes,n_ingredients,n_steps,nutrition,steps,tags) VALUES ("+"?,"*12+"?"+")"
     insertRecipes = session.prepare(insertStatement)
     batch = BatchStatement(consistency_level=ConsistencyLevel.QUORUM)
     counter = 0
     acounter = 0
+
     for recipe in recipes[tableOrder].values.tolist():
         counter+=1
         acounter+=1
         print(str(acounter))
-        try :
-            if np.isnan(recipe[4]):
-                recipe[4]="noName"
-        except:
-            pass
+        recipe[0] = uuid.uuid1()
+        input(str(recipe[6]))
         recipe[6] = ast.literal_eval(recipe[6])
-        #recipe[7] = ast.literal_eval(recipe[7])
-        recipe[8] = ast.literal_eval(recipe[8])
-        try :
-            if np.isnan(recipe[9]):
-                recipe[9]=""
-        except:
-            pass
-        recipe[10] = ast.literal_eval(recipe[10])
+        #try :
+        #    if np.isnan(recipe[9]):
+        #        recipe[9]=""
+        #except:
+        #    pass
         batch.add(insertRecipes, tuple(recipe))
         if counter > 10:
             session.execute(batch)

@@ -1,3 +1,4 @@
+import ast
 #
 # CREATE TABLES
 #
@@ -16,12 +17,13 @@ def createRecipeTable(session):
                        minutes float,
                        description text,
                        difficulty text,
+                       tags set<text>,
                        PRIMARY KEY ((id) , name , submitted ,mean_rating) )
                        WITH CLUSTERING ORDER BY (name ASC, submitted ASC,mean_rating ASC);""")
     # Q1 table
     session.execute("""CREATE TABLE IF NOT EXISTS query_1 (
                        submitted date ,
-                       id uid,
+                       id uuid,
                        PRIMARY KEY((submitted),id ) )
                        WITH CLUSTERING ORDER BY (id ASC);""")
     # Q2 table
