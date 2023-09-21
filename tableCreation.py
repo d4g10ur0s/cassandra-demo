@@ -18,14 +18,14 @@ def createRecipeTable(session):
                        description text,
                        difficulty text,
                        tags set<text>,
-                       PRIMARY KEY ((id) ,mean_rating , submitted ) )
-                       WITH CLUSTERING ORDER BY (mean_rating ASC, submitted ASC);""")
+                       PRIMARY KEY (id));""")
     # Q1 table
     session.execute("""CREATE TABLE IF NOT EXISTS query_1 (
                        submitted date ,
+                       mean_rating double,
                        id uuid,
-                       PRIMARY KEY((submitted),id ) )
-                       WITH CLUSTERING ORDER BY (id ASC);""")
+                       PRIMARY KEY(submitted,mean_rating ) )
+                       WITH CLUSTERING ORDER BY (mean_rating DESC);""")
     # Q2 table
     session.execute("""CREATE TABLE IF NOT EXISTS query_2 (
                        name text ,
