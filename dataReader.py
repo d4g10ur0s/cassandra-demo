@@ -98,7 +98,7 @@ try :
             choice = int(input("Choose an integer between 1 to 5\n"))
             if choice==1:
                 # get the ids
-                query_1 = """select * from query_1 where submitted>'2012-01-01' and submitted<'2012-05-31' ORDER BY mean_rating DESC LIMIT 30 ;"""
+                query_1 = """select * from query_1 where submitted>='2012-01-01' and submitted<='2012-05-31' ALLOW FILTERING;"""
                 recipes = session.execute(query_1)
                 idl = []
                 for r in recipes :
@@ -106,10 +106,16 @@ try :
                 # select by id
                 query_1 = f"SELECT * FROM recipe WHERE id IN ({', '.join(['%s']*len(idl))});"
                 recipes = session.execute(query_1, idl)
-                for r in recipes :
+                #sorting
+                rows = list(recipes)
+                sorted_rows = sorted(rows, key=lambda x: x.mean_rating, reverse=True)
+                # Select the top 30 rows
+                top_30_rows = sorted_rows[:30]
+                # Process the top 30 rows
+                for r in top_30_rows :
                     #print(str(r))
-                    print(str("*"*10+"\n"+"Name : " + str(r[1]) + "\nMean Rating : " + str(r[3])))
-                    print(str("Submitted : " + str(r[2]) + "\nDifficulty : " + str(r[6]) +"\n"+"*"*10))
+                    print(str("*"*10+"\n"+"Name : " + str(r.name) + "\nMean Rating : " + str(r.mean_rating)))
+                    print(str("Submitted : " + str(r.submitted) + "\nDifficulty : " + str(r.difficulty) +"\n"+"*"*10))
             elif choice==2:
                 recipes = query_2(session)
                 if len(recipes)>0:

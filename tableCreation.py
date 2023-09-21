@@ -22,10 +22,8 @@ def createRecipeTable(session):
     # Q1 table
     session.execute("""CREATE TABLE IF NOT EXISTS query_1 (
                        submitted date ,
-                       mean_rating double,
                        id uuid,
-                       PRIMARY KEY(submitted,mean_rating ) )
-                       WITH CLUSTERING ORDER BY (mean_rating DESC);""")
+                       PRIMARY KEY(submitted,id) );""")
     # Q2 table
     session.execute("""CREATE TABLE IF NOT EXISTS query_2 (
                        name text ,
