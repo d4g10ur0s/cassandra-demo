@@ -98,13 +98,13 @@ try :
             choice = int(input("Choose an integer between 1 to 5\n"))
             if choice==1:
                 # get the ids
-                query_1 = """select * from query_1 where submitted>'2012-01-01' and submitted<'2012-05-31' limit 30 ALLOW FILTERING;"""
+                query_1 = """select * from query_1 where submitted>'2012-01-01' and submitted<'2012-05-31' ALLOW FILTERING;"""
                 recipes = session.execute(query_1)
                 idl = []
                 for r in recipes :
                     idl.append(r[1])
                 # select by id
-                query_1 = f"SELECT * FROM recipe WHERE id IN ({', '.join(['%s']*len(idl))})"
+                query_1 = f"SELECT * FROM recipe WHERE id IN ({', '.join(['%s']*len(idl))}) ORDER BY mean_rating ASC LIMIT 30"
                 recipes = session.execute(query_1, idl)
                 for r in recipes :
                     #print(str(r))
