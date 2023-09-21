@@ -12,7 +12,6 @@ def recipeTagsBulkInsert(id,tags,session):
     insertRecipeTags = session.prepare(insertStatement)
     batch = BatchStatement(consistency_level=ConsistencyLevel.QUORUM)
     for tname in tags :
-        print(tname)
         batch.add(insertRecipeTags, (id,tname) )
     session.execute(batch)
 #
@@ -44,26 +43,24 @@ def recipeBulkInsert(recipes,session):
     acounter = 0
 
     for recipe in recipes[tableOrder].values.tolist():
-        counter+=1
         acounter+=1
         print(str(acounter))
-        recipe[0] = uuid.uuid1()
-        #input(str(recipe[11]))
+        recipe[0] = uuid.uuid4()
         recipe[6] = ast.literal_eval(recipe[6])
         recipe[10] = ast.literal_eval(recipe[10])
         recipe[11] = ast.literal_eval(recipe[11])
         recipe[12] = ast.literal_eval(recipe[12])
         recipeTagsBulkInsert(recipe[0],recipe[12],session)
         try :
-            if np.isnan(recipe[4]):
-                #input(str(recipe))
-                recipe[4]=""
+            batch.add(insertRecipes, tuple(recipe))
+            batch_1.add(insertRecipes_1, (recipe[2],recipe[0]))
+            batch_2.add(insertRecipes_2, (recipe[1],recipe[0]))
+            batch_3.add(insertRecipes_3, (recipe[5],recipe[0]))
+            counter+=1
         except:
+            input(str(recipe))
             pass
-        batch.add(insertRecipes, tuple(recipe))
-        batch_1.add(insertRecipes_1, (recipe[2],recipe[0]))
-        batch_2.add(insertRecipes_2, (recipe[1],recipe[0]))
-        batch_3.add(insertRecipes_3, (recipe[5],recipe[0]))
+
         if counter > 10:
             session.execute(batch)
             session.execute(batch_1)

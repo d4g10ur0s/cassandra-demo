@@ -1,6 +1,7 @@
 import os
 import datetime as dt
 
+import uuid
 import pandas as pd
 import numpy as np
 import ast
@@ -96,10 +97,19 @@ try :
         try :
             choice = int(input("Choose an integer between 1 to 5\n"))
             if choice==1:
-                recipes = query_1(session)
+                # get the ids
+                query_1 = """select * from query_1 where submitted>'2012-01-01' and submitted<'2012-05-31' limit 30 ALLOW FILTERING;"""
+                recipes = session.execute(query_1)
+                idl = []
                 for r in recipes :
-                    print(str("*"*10+"\n"+"Name : " + r[0] + "\nMean Rating : " + str(r[1])))
-                    print(str("Submitted : " + str(r[2]) + "\nDifficulty : " + str(r[3]) +"\n"+"*"*10))
+                    idl.append(r[1])
+                # select by id
+                query_1 = f"SELECT * FROM recipe WHERE id IN ({', '.join(['%s']*len(idl))})"
+                recipes = session.execute(query_1, idl)
+                for r in recipes :
+                    #print(str(r))
+                    print(str("*"*10+"\n"+"Name : " + str(r[1]) + "\nMean Rating : " + str(r[3])))
+                    print(str("Submitted : " + str(r[2]) + "\nDifficulty : " + str(r[6]) +"\n"+"*"*10))
             elif choice==2:
                 recipes = query_2(session)
                 if len(recipes)>0:
@@ -131,10 +141,12 @@ try :
                             print(str(i+1) + ") " + str(r[12][i]))
                 else:
                     print("There is no recipe with this name.")
-        except:
+        except ValueError as err:
+            print(str(err))
             if (input("Do you want to exit?\n(y\\n)\n")) == "y":
                 break
-except InvalidRequest :
+except InvalidRequest as err :
+    print(str(err))
     # create tables
     createRecipeTable(session)
 finally :
