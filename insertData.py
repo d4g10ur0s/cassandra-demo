@@ -50,8 +50,8 @@ def recipeBulkInsert(recipes,session):
         recipe[11] = ast.literal_eval(recipe[11])
         recipe[12] = ast.literal_eval(recipe[12])
         # no recipe tags or name or submitted or any other value
-        print(str(len(recipe[12])))
-        if len(recipe[12])<=1 or np.isnan(recipe[4]):
+        #print(str(len(recipe[12])))
+        if len(recipe[12])<=1:
             print("+mvainei")
             continue
 
@@ -63,7 +63,7 @@ def recipeBulkInsert(recipes,session):
             batch_3.add(insertRecipes_3, (recipe[5],recipe[0]))
             counter+=1
         except:
-            input(str(recipe))
+            #input(str(recipe))
             pass
 
         if counter > 15:

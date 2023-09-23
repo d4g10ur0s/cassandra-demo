@@ -18,7 +18,7 @@ def createRecipeTable(session):
                        description text,
                        difficulty text,
                        tags set<text>,
-                       PRIMARY KEY (id));""")
+                       PRIMARY KEY (id , mean_rating) ORDER BY mean_rating DESC);""")
     # Q1 table
     session.execute("""CREATE TABLE IF NOT EXISTS query_1 (
                        submitted date ,

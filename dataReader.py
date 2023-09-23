@@ -108,6 +108,11 @@ try :
                 recipes = session.execute(query_1, idl)
                 #sorting
                 rows = list(recipes)
+                ###########################
+                for r in rows :
+                    #print(str(r))
+                    print(str("*"*10+"\n"+"Name : " + str(r.name) + "\nMean Rating : " + str(r.mean_rating)))
+                ###########################
                 sorted_rows = sorted(rows, key=lambda x: x.mean_rating, reverse=True)
                 # Select the top 30 rows
                 top_30_rows = sorted_rows[:30]
