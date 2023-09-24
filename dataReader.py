@@ -104,54 +104,85 @@ try :
                 for r in recipes :
                     idl.append(r[1])
                 # select by id
-                query_1 = f"SELECT * FROM recipe WHERE id IN ({', '.join(['%s']*len(idl))});"
+                query_1 = f"SELECT * FROM recipe WHERE id IN ({', '.join(['%s']*len(idl))}) ALLOW FILTERING;"
                 recipes = session.execute(query_1, idl)
                 #sorting
                 rows = list(recipes)
-                ###########################
-                for r in rows :
-                    #print(str(r))
-                    print(str("*"*10+"\n"+"Name : " + str(r.name) + "\nMean Rating : " + str(r.mean_rating)))
-                ###########################
                 sorted_rows = sorted(rows, key=lambda x: x.mean_rating, reverse=True)
                 # Select the top 30 rows
                 top_30_rows = sorted_rows[:30]
                 # Process the top 30 rows
-                for r in top_30_rows :
+                for r in top_30_rows[:5] :
                     #print(str(r))
                     print(str("*"*10+"\n"+"Name : " + str(r.name) + "\nMean Rating : " + str(r.mean_rating)))
                     print(str("Submitted : " + str(r.submitted) + "\nDifficulty : " + str(r.difficulty) +"\n"+"*"*10))
             elif choice==2:
-                recipes = query_2(session)
-                if len(recipes)>0:
-                    for r in recipes :
-                        print(str("*"*10+"\n"+"Difficulty : " + r[0] + "\nMean Rating : " + str(r[1])))
-                        print(str("*"*10+"\n"+"Name : " + r[10] + "\nMinutes : " + str(r[9])))
-                        print("Steps")
-                        for i in range(len(r[12])):
-                            print(str(i+1) + ") " + str(r[12][i]))
+                rName = str(input('Provide recipe\'s name : '))
+                query_2 = "select * from query_2 where name = \'" + rName+"\';"
+                recipes = session.execute(query_2)
+                idl = []
+                for r in recipes :
+                    idl.append(r[1])
+                # select by id
+                query_2 = f"SELECT * FROM recipe WHERE id IN ({', '.join(['%s']*len(idl))}) ALLOW FILTERING;"
+                recipes = session.execute(query_2, idl)
+                #sorting
+                rows = list(recipes)
+                if len(rows) > 0:
+                    for r in rows :
+                        print(str("*"*10+"\n"+"Name : " + str(r.name) + "\nMean Rating : " + str(r.mean_rating)))
+                        print(str("Submitted : " + str(r.submitted) + "\nDifficulty : " + str(r.difficulty) +"\n"+"*"*10))
                 else:
-                    print("There is no recipe with this name.")
+                    print("There is no recipe named : " + str(rName))
             elif choice==3:
-                recipes = query_3(session)
-                for r in recipes :
-                    print(str("*"*10+"\n"+"Name : " + r[0] + "\nMean Rating : " + str(r[1])))
-                    print(str("Difficulty : " + str(r[2]) +"\n"+"*"*10))
-            elif choice==4:
-                recipes = query_4(session)
-                for r in recipes :
-                    print(str("*"*10+"\n"+"Name : " + r[0] + "\nMean Rating : " + str(r[1])+"\n"+"*"*10))
-            elif choice==5:
-                recipes = query_5(session)
-                if len(recipes)>0:
-                    for r in recipes :
-                        print(str("*"*10+"\n"+"Difficulty : " + r[0] + "\nMean Rating : " + str(r[1])))
-                        print(str("*"*10+"\n"+"Name : " + r[10] + "\nMinutes : " + str(r[9])))
-                        print("Steps")
-                        for i in range(len(r[12])):
-                            print(str(i+1) + ") " + str(r[12][i]))
+                categoryNum = int(input('Provide recipe\'s category number \nzeroSkill : 1\neasy : 2 \nintermediate : 3 \nprofessional : 4 \n'))
+                if categoryNum in range(1,5):
+                    category = ["zeroSkill", "easy" , "intermediate", "professional"]
+                    query_3 = "select * from recipe where difficulty=\'"+category[categoryNum-1]+"\' ORDER BY mean_rating DESC;"
+                    recipes = session.execute(query_3)
+                    rows = list(recipes)
+                    for r in rows[:5] :
+                        print(str("*"*10+"\n"+"Name : " + str(r.name) + "\nMean Rating : " + str(r.mean_rating)))
+                        print(str("Submitted : " + str(r.submitted) + "\nDifficulty : " + str(r.difficulty) +"\n"+"*"*10))
                 else:
-                    print("There is no recipe with this name.")
+                    print("Provide a correct category number .")
+            elif choice==4:
+                rTag = str(input('Provide recipe\'s tag : '))
+                query_4 = "select * from recipe_tags where tag_name = \'" + rTag+"\';"
+                recipes = session.execute(query_4)
+                idl = []
+                for r in recipes :
+                    idl.append(r[1])
+                # select by id
+                query_4 = f"SELECT * FROM recipe WHERE id IN ({', '.join(['%s']*len(idl))}) ALLOW FILTERING;"
+                recipes = session.execute(query_4, idl)
+                #sorting
+                rows = list(recipes)
+                if len(rows) > 0:
+                    sorted_rows = sorted(rows, key=lambda x: x.submitted, reverse=True)
+                    for r in sorted_rows[:5] :
+                        print(str("*"*10+"\n"+"Name : " + str(r.name) + "\nMean Rating : " + str(r.mean_rating)))
+                        print(str("Submitted : " + str(r.submitted) + "\nDifficulty : " + str(r.difficulty) +"\n"+"*"*10))
+                else:
+                    print("There is no recipe named : " + str(rName))
+            elif choice==5:
+                rTag = str(input('Provide recipe\'s tag : '))
+                query_4 = "select * from recipe_tags where tag_name = \'" + rTag+"\';"
+                recipes = session.execute(query_4)
+                idl = []
+                for r in recipes :
+                    idl.append(r[1])
+                # select by id
+                query_4 = f"SELECT * FROM recipe WHERE id IN ({', '.join(['%s']*len(idl))}) LIMIT 20 ALLOW FILTERING;"
+                recipes = session.execute(query_4, idl)
+                #sorting
+                rows = list(recipes)
+                if len(rows) > 0:
+                    for r in rows[:5] :
+                        print(str("*"*10+"\n"+"Name : " + str(r.name) + "\nMean Rating : " + str(r.mean_rating)))
+                        print(str("Submitted : " + str(r.submitted) + "\nDifficulty : " + str(r.difficulty) +"\n"+"*"*10))
+                else:
+                    print("There is no recipe named : " + str(rName))
         except ValueError as err:
             print(str(err))
             if (input("Do you want to exit?\n(y\\n)\n")) == "y":
@@ -161,7 +192,8 @@ except InvalidRequest as err :
     # create tables
     createRecipeTable(session)
 finally :
-    # it's just a select all statement , commonly used to validate data insertion
+    # it's just a select all statement
+    # used to validate data insertion
     rows = session.execute("SELECT * FROM recipe", [])
     if not rows:
         print("Does not exist")

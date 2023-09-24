@@ -18,7 +18,7 @@ def createRecipeTable(session):
                        description text,
                        difficulty text,
                        tags set<text>,
-                       PRIMARY KEY (id , mean_rating) ORDER BY mean_rating DESC);""")
+                       PRIMARY KEY ((difficulty) , mean_rating , submitted) ) WITH CLUSTERING ORDER BY (mean_rating DESC,submitted DESC);""")
     # Q1 table
     session.execute("""CREATE TABLE IF NOT EXISTS query_1 (
                        submitted date ,
@@ -29,12 +29,6 @@ def createRecipeTable(session):
                        name text ,
                        id uuid,
                        PRIMARY KEY((name),id ) )
-                       WITH CLUSTERING ORDER BY (id ASC);""")
-    # Q3 table
-    session.execute("""CREATE TABLE IF NOT EXISTS query_3 (
-                       difficulty text,
-                       id uuid,
-                       PRIMARY KEY((difficulty),id ) )
                        WITH CLUSTERING ORDER BY (id ASC);""")
     # Q.4-5 table
     session.execute("""CREATE TABLE IF NOT EXISTS recipe_tags (

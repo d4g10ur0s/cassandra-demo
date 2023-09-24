@@ -35,7 +35,7 @@ def recipeBulkInsert(recipes,session):
     batch_2 = BatchStatement(consistency_level=ConsistencyLevel.QUORUM)
     insertRecipes_2 = session.prepare(insertStatement_2)
 
-    insertStatement_3 = "insert into query_3 (difficulty,id) VALUES (?,?)"
+    insertStatement_3 = "insert into query_3 (difficulty,mean_rating,id) VALUES (?,?,?)"
     batch_3 = BatchStatement(consistency_level=ConsistencyLevel.QUORUM)
     insertRecipes_3 = session.prepare(insertStatement_3)
 
@@ -60,7 +60,7 @@ def recipeBulkInsert(recipes,session):
             batch.add(insertRecipes, tuple(recipe))
             batch_1.add(insertRecipes_1, (recipe[2],recipe[0]))
             batch_2.add(insertRecipes_2, (recipe[1],recipe[0]))
-            batch_3.add(insertRecipes_3, (recipe[5],recipe[0]))
+            batch_3.add(insertRecipes_3, (recipe[5],recipe[3],recipe[0]))
             counter+=1
         except:
             #input(str(recipe))
